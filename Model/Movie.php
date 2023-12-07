@@ -1,96 +1,97 @@
 <?php
-include __DIR__.'/Genre.php';
-include __DIR__.'/Product.php';
+
+include __DIR__ . "/Genre.php";
+include __DIR__ . "/Product.php";
+include __DIR__ . "/../Traits/DrawCard.php";
 class Movie extends Product
 {
-    private $id;
-    private $title;
-    private $overview;
-    private $vote_average;
-    private $poster_path;
-    private $original_language;
-    private $genres;
+    // dichiarati elementi della classe Movie
+    use DrawCard;
+    public $id;
+    public $original_title;
+    public $title;
+    public $poster_path;
+    public $original_language;
+    public $vote_average;
+    public array $genres;
 
-    function __construct($id, $title, $overview, $vote, $language, $image, $genres, $quantity, $price) 
+    // costrutto
+
+    function __construct($id, $original_title, $title, $poster_path, $original_language, $genres, $vote_average, $price, $quantity)
     {
-        $this ->id = $id;
-        $this -> title = $title;
-        $this ->overview = $overview;   
-        $this ->vote_average = $vote;
-        $this ->poster_path = $image;
-        $this ->original_language= $language;
+        parent::__construct($price, $quantity);
+        $this->id = $id;
+        $this->original_title = $original_title;
+        $this->title = $title;
+        $this->poster_path = $poster_path;
+        $this->vote_average = $vote_average;
+        $this->original_language = $original_language;
         $this->genres = $genres;
     }
     public function getVote()
     {
         $vote = ceil($this->vote_average / 2);
-        $template = '<p>';
-        for ($n = 1; $n <= 5; $n++) {
-            
-                $template .= $n <= $vote ? '<i class="fa-solid fa-star"></i>' : '<i class="fa-regular fa-star"></i>';
-            
-        }
-        $template .= '</p>';
-        return $template;
-    }
-    private function formatGenres(){
         $template = "<p>";
-        for ($n = 0; $n < count($this->genres); $n++){
-            $template .= $this->genres[$n]->drawGenre();
+        for ($n = 1; $n <= 5; $n++) {
+            $template .= $n <= $vote ? '<i class="fa-solid fa-star"></i>' : '<i class="fa-regular fa-star"></i>';
         }
-        $template .="<p>";
+        $template .= "</p>";
         return $template;
     }
-    public function printCard(){
-
-        $error = '';
-        if(ceil($this->vote_average)< 7){
-            try {
-                $this->setDiscount(10);
-            }catch(Exception $e){
-                $error = 'Eccezione:' . $e->getMessage();
-            }
+    public function formatGenres()
+    {
+        $template = "<p>";
+        for ($n = 0; $n < count($this->genres); $n++) {
+            $template .= '<span>' . $this->genres[$n]->name . ' </span> ';
         }
-        $sconto - $this->getDiscount();
-        $image = $this ->poster_path;
-        $title = strlen ($this ->title) > 28 ? substr($this->title, 0, 28) . '...' : $this->title;
-        $content = substr($this->overview, 0, 100) . "...";
-        $custom = $this ->getVote();
-        $genre = $this->formatGenres();
-        $price = $this->price;
-        $quantity = $this->quantity;
-        include __DIR__. '/../Views/card.php';
-   
-}
+        $template .= "</p>";
+        return $template;
+    }
+    public function formatCard()
+    {
+        $cardItem = [
+                    'sconto' => $this->getDiscount(),
+                    'image' => $this->poster_path,
+                    'title' => $this->title,
+                    'content' => substr($this->vote_average, 0, 100) . '...',
+                    'custom' => $this->getVote(),
+                    'genre' => $this->formatGenres(),
+                    'price' => $this->price,
+                    'quantity' => $this->quantity
+                ];
+                return $cardItem;
+        
+    }
 
-public static function fetchAll(){
 
-    $movieString = file_get_contents(__DIR__ .'/movie_db.json');
-    $movieList = json_decode($movieString, true);
+    public static function fetchAll()
+    {
 
-    $movies = [];
-    $genres = Genre::fetchAll();
-    foreach( $movieList as $item){
-        $moviegenres = [];
-        while (count($moviegenres) < count($item['genre_ids'])){
-            $index = rand(0, count($genres) -1);
-            $rand_genre = $genres[$index];
-            if(!in_array($rand_genre, $moviegenres)){
-                $moviegenres[] = $rand_genre;
+        $movieList = file_get_contents(__DIR__ . "/movie_db.json");
+        $movieEl = json_decode($movieList, true);
+        $movies = [];
+        $genres = Genre::fetchAll();
+        foreach ($movieEl as $item) {
+            $moviegenres = [];
+            $quantity = rand(0, 100);
+            $price = rand(5, 100);
+
+            while (count($moviegenres) < count($item["genre_ids"])) {
+
+                $index = rand(0, count($genres) - 1);
+
+                $rand_genre = $genres[$index];
+
+                if (!in_array($rand_genre, $moviegenres)) {
+                    $moviegenres[] = $rand_genre;
+                }
             }
+            $movies[] = new Movie($item["id"], $item["original_title"], $item["title"], $item["poster_path"], $item["original_language"],  $moviegenres, $item["vote_average"],   $quantity, $price);
         }
-        $quantity = rand(0, 100);
-        $price = rand(5, 200);
-        $movies[] = new Movie($item ['id'], $item ['title'],$item ['overview'],$item ['vote_average'], $item ['original_language'], $item ['poster_path'], $price, $quantity, $genres);
+
+
+
+
+        return $movies;
     }
-    return $movies;
-    }
-}
-
-
-
-
-
-
-
-?>
+} ?>
